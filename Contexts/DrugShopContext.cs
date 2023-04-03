@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using Store444.Models;
 
-namespace Store444.Models;
+namespace Store444.Contexts;
 
 public partial class DrugShopContext : DbContext
 {
@@ -25,11 +26,6 @@ public partial class DrugShopContext : DbContext
 
     public virtual DbSet<ShipType> ShipTypes { get; set; }
 
-    public virtual DbSet<User> Users { get; set; }
-
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseSqlServer("Server=(LocalDB)\\MSSQLLocalDB; Database=DrugShop; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,37 +33,41 @@ public partial class DrugShopContext : DbContext
         {
             entity.HasIndex(e => e.ShipType, "IX_Orders_DeliveryId");
 
+            entity.HasIndex(e => e.PaymentTypeId, "IX_Orders_PaymentTypeId");
+
+            entity.HasIndex(e => e.UserId, "IX_Orders_UserId");
+
             entity.Property(e => e.DeliveryAddress).HasMaxLength(50);
+            entity.Property(e => e.UserId)
+                .HasMaxLength(50)
+                .IsUnicode(false);
 
             entity.HasOne(d => d.PaymentType).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.PaymentTypeId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Orders_PaymentType");
 
             entity.HasOne(d => d.ShipTypeNavigation).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.ShipType)
-                .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Orders_ShipType");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Orders)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_Orders_Users");
         });
 
         modelBuilder.Entity<OrderProduct>(entity =>
         {
-            entity.HasKey(e => new { e.NameProductId, e.OrdersOrderId });
+            entity.HasKey(e => new { e.ProductId, e.OrderId });
 
             entity.ToTable("OrderProduct");
 
-            entity.HasIndex(e => e.OrdersOrderId, "IX_OrderProduct_OrdersOrderId");
+            entity.HasIndex(e => e.OrderId, "IX_OrderProduct_OrdersOrderId");
 
             entity.Property(e => e.Price).HasColumnType("decimal(18, 0)");
 
-            entity.HasOne(d => d.NameProduct).WithMany(p => p.OrderProducts).HasForeignKey(d => d.NameProductId);
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderProducts)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("FK_OrderProduct_Orders_OrdersOrderId");
 
-            entity.HasOne(d => d.OrdersOrder).WithMany(p => p.OrderProducts).HasForeignKey(d => d.OrdersOrderId);
+            entity.HasOne(d => d.Product).WithMany(p => p.OrderProducts)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("FK_OrderProduct_Products_NameProductId");
         });
 
         modelBuilder.Entity<PaymentType>(entity =>

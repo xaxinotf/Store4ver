@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Store444.Contexts;
 using Store444.Models;
 
 namespace Store444.Controllers
@@ -21,9 +23,9 @@ namespace Store444.Controllers
         // GET: Products
         public async Task<IActionResult> Index()
         {
-              return _context.Products != null ? 
-                          View(await _context.Products.ToListAsync()) :
-                          Problem("Entity set 'DrugShopContext.Products'  is null.");
+            return _context.Products != null ?
+                        View(await _context.Products.ToListAsync()) :
+                        Problem("Entity set 'DrugShopContext.Products'  is null.");
         }
 
         // GET: Products/Details/5
@@ -35,7 +37,7 @@ namespace Store444.Controllers
             }
 
             var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.ProductId == id);
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (product == null)
             {
                 return NotFound();
@@ -55,7 +57,7 @@ namespace Store444.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ProductId,Name,RelaiseFromAndDosing,Amount,ShelfLife")] Product product)
+        public async Task<IActionResult> Create([Bind("Id,Name,RelaiseFromAndDosing,ShelfLife")] Product product)
         {
             if (ModelState.IsValid)
             {
@@ -87,9 +89,9 @@ namespace Store444.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("ProductId,Name,RelaiseFromAndDosing,Amount,ShelfLife")] Product product)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,RelaiseFromAndDosing,ShelfLife")] Product product)
         {
-            if (id != product.ProductId)
+            if (id != product.Id)
             {
                 return NotFound();
             }
@@ -103,7 +105,7 @@ namespace Store444.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!ProductExists(product.ProductId))
+                    if (!ProductExists(product.Id))
                     {
                         return NotFound();
                     }
@@ -126,7 +128,7 @@ namespace Store444.Controllers
             }
 
             var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.ProductId == id);
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (product == null)
             {
                 return NotFound();
@@ -149,14 +151,60 @@ namespace Store444.Controllers
             {
                 _context.Products.Remove(product);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool ProductExists(int id)
         {
-          return (_context.Products?.Any(e => e.ProductId == id)).GetValueOrDefault();
+            return (_context.Products?.Any(e => e.Id == id)).GetValueOrDefault();
         }
+        public IActionResult Import()
+        {
+            return View();
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddProductExcel(IFormFile fileExcel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View();
+            }
+            
+            if (fileExcel != null)
+            {
+                using (var stream = new FileStream(fileExcel.FileName, FileMode.Create))
+                {
+                    await fileExcel.CopyToAsync(stream);
+                    using (var workBook = new XLWorkbook(stream, XLEventTracking.Disabled))
+                    {
+                        foreach (var worksheet in workBook.Worksheets)
+                        {
+                            var c = worksheet.RowsUsed().Count();
+                            foreach (var row in worksheet.RowsUsed())
+                            {
+                                try
+                                {
+                                    var product = new Product();
+                                    product.Name = row.Cell(1).Value.ToString();
+                                    product.RelaiseFromAndDosing = row.Cell(2).Value.ToString();
+                                    product.ShelfLife = row.Cell(3).Value.ToString();
+                                    _context.Products.Add(product);
+                                }
+                                catch (Exception)
+                                {
+                                    throw;
+                                }
+                            }
+                        }
+                    }
+                }
+                _context.SaveChanges();
+            }
+            return RedirectToAction("Index", "Products");
+        }
+
     }
 }

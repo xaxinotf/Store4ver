@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Store444.Contexts;
 using Store444.Models;
 
 namespace Store444.Controllers
@@ -21,23 +24,24 @@ namespace Store444.Controllers
         // GET: Orders
         public async Task<IActionResult> Index()
         {
-            var drugShopContext = _context.Orders.Include(o => o.PaymentType).Include(o => o.ShipTypeNavigation).Include(o => o.User);
+            var drugShopContext = _context.Orders.Include(o => o.PaymentType).Include(o => o.ShipTypeNavigation);
             return View(await drugShopContext.ToListAsync());
         }
 
         // GET: Orders/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details()
         {
-            if (id == null || _context.Orders == null)
-            {
-                return NotFound();
-            }
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            //if (id == null || _context.Orders == null)
+            //{
+            //    return NotFound();
+            //}
 
             var order = await _context.Orders
                 .Include(o => o.PaymentType)
                 .Include(o => o.ShipTypeNavigation)
-                .Include(o => o.User)
-                .FirstOrDefaultAsync(m => m.OrderId == id);
+                .Where(x=>x.UserId == userId)
+                .ToListAsync();
             if (order == null)
             {
                 return NotFound();
@@ -45,33 +49,35 @@ namespace Store444.Controllers
 
             return View(order);
         }
-
-        // GET: Orders/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id");
-            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id");
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "UserId");
+            var payments = await _context.PaymentTypes.ToListAsync();
+            var shipTypes = await _context.ShipTypes.ToListAsync();
+            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Name", payments);
+            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Name", shipTypes);
             return View();
         }
 
-        // POST: Orders/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("OrderId,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order order)
+        public async Task<IActionResult> Create([Bind("Id,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order model, int id)
         {
-            if (ModelState.IsValid)
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var product = _context.Products.FirstOrDefault(x => x.Id == id);
+            model.UserId = userId;
+            var order = new Order()
             {
-                _context.Add(order);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id", order.PaymentTypeId);
-            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id", order.ShipType);
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "UserId", order.UserId);
-            return View(order);
+                ShipType = model.ShipType,
+                PaymentType = model.PaymentType,
+                DeliveryAddress = model.DeliveryAddress,
+                UserId = userId
+            };
+
+            _context.Orders.Add(order);
+            order.OrderProducts.Add(new OrderProduct { Count = 1, Price = 1, Product = product });
+            _context.SaveChanges();
+            return RedirectToAction(nameof(Details));
+
         }
 
         // GET: Orders/Edit/5
@@ -89,7 +95,6 @@ namespace Store444.Controllers
             }
             ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id", order.PaymentTypeId);
             ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id", order.ShipType);
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "UserId", order.UserId);
             return View(order);
         }
 
@@ -98,9 +103,9 @@ namespace Store444.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("OrderId,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order order)
+        public async Task<IActionResult> Edit(int id, [Bind("Id,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order order)
         {
-            if (id != order.OrderId)
+            if (id != order.Id)
             {
                 return NotFound();
             }
@@ -114,7 +119,7 @@ namespace Store444.Controllers
                 }
                 catch (DbUpdateConcurrencyException)
                 {
-                    if (!OrderExists(order.OrderId))
+                    if (!OrderExists(order.Id))
                     {
                         return NotFound();
                     }
@@ -127,7 +132,6 @@ namespace Store444.Controllers
             }
             ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id", order.PaymentTypeId);
             ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id", order.ShipType);
-            ViewData["UserId"] = new SelectList(_context.Users, "UserId", "UserId", order.UserId);
             return View(order);
         }
 
@@ -142,8 +146,7 @@ namespace Store444.Controllers
             var order = await _context.Orders
                 .Include(o => o.PaymentType)
                 .Include(o => o.ShipTypeNavigation)
-                .Include(o => o.User)
-                .FirstOrDefaultAsync(m => m.OrderId == id);
+                .FirstOrDefaultAsync(m => m.Id == id);
             if (order == null)
             {
                 return NotFound();
@@ -166,14 +169,14 @@ namespace Store444.Controllers
             {
                 _context.Orders.Remove(order);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool OrderExists(int id)
         {
-          return (_context.Orders?.Any(e => e.OrderId == id)).GetValueOrDefault();
+            return (_context.Orders?.Any(e => e.Id == id)).GetValueOrDefault();
         }
     }
 }

@@ -1,13 +1,20 @@
-﻿@model IEnumerable<Store444.Models.Product>
+﻿@using Store444.Dopomoga;
+@model IEnumerable<Store444.Models.Product>
 
 @{
     ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Index</h1>
+<h1>Головна сторінка</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    @if (User.IsInRole(AllRoles.Shipper))
+    {
+    <a style="margin-right:35px" asp-action="Create">Створити новий продукт</a>
+
+    <a asp-action="Import">Додати продукт за допомогою Excel</a>
+    }
 </p>
 <table class="table">
     <thead>
@@ -19,35 +26,59 @@
                 @Html.DisplayNameFor(model => model.RelaiseFromAndDosing)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Amount)
-            </th>
-            <th>
                 @Html.DisplayNameFor(model => model.ShelfLife)
             </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Name)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.RelaiseFromAndDosing)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Amount)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ShelfLife)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.ProductId">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.ProductId">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.ProductId">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.RelaiseFromAndDosing)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ShelfLife)
+                </td>
+                <td>
+                    @if (User.Identity.IsAuthenticated)
+                    {
+                        <a asp-controller="Orders" asp-action="Create" asp-route-id="@item.Id">Купити</a>
+                    }
+                    <a asp-action="Details" asp-route-id="@item.Id">Деталі</a> |
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
+<div class="container">
+    <div id="chart1"></div>
+</div>
+
+@section scripts
+    {
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+            $.get('/api/Charts/JsonData', function (JsonData) {
+                data = google.visualization.arrayToDataTable(JsonData, false);
+                var option = {
+                    title: "Відношення між товарами",
+                    width: 500,
+                    height: 300
+                };
+                chart = new google.visualization.PieChart(document.getElementById('chart1'));
+                chart.draw(data, option);
+
+            })
+        }
+    </script>
+}
+
