@@ -14,26 +14,7 @@
         <form asp-action="Edit">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <input type="hidden" asp-for="Id" />
-            <div class="form-group">
-                <label asp-for="Status" class="control-label"></label>
-                <input asp-for="Status" class="form-control" />
-                <span asp-validation-for="Status" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="ShipType" class="control-label"></label>
-                <select asp-for="ShipType" class="form-control" asp-items="ViewBag.ShipType"></select>
-                <span asp-validation-for="ShipType" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="PaymentTypeId" class="control-label"></label>
-                <select asp-for="PaymentTypeId" class="form-control" asp-items="ViewBag.PaymentTypeId"></select>
-                <span asp-validation-for="PaymentTypeId" class="text-danger"></span>
-            </div>
-            <div class="form-group">
-                <label asp-for="UserId" class="control-label"></label>
-                <input asp-for="UserId" class="form-control" />
-                <span asp-validation-for="UserId" class="text-danger"></span>
-            </div>
+
             <div class="form-group">
                 <label asp-for="DeliveryAddress" class="control-label"></label>
                 <input asp-for="DeliveryAddress" class="form-control" />
@@ -47,7 +28,7 @@
 </div>
 
 <div>
-    <a asp-action="Index">Back to List</a>
+    <a asp-action="Index">Повернутись на головну сторінку</a>
 </div>
 
 @section Scripts {

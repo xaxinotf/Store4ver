@@ -205,6 +205,32 @@ namespace Store444.Controllers
             }
             return RedirectToAction("Index", "Products");
         }
-
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Export()
+        {
+            int rowCount = 1;
+            using (var workBook = new XLWorkbook(XLEventTracking.Disabled))
+            {
+                var exexProducts = await _context.Products.ToListAsync();
+                var worksheet = workBook.Worksheets.Add("All products");
+                foreach (var product in exexProducts)
+                {
+                    worksheet.Cell(rowCount, 1).Value = product.Name;
+                    worksheet.Cell(rowCount, 2).Value = product.RelaiseFromAndDosing;
+                    worksheet.Cell(rowCount, 3).Value = product.ShelfLife;
+                    rowCount++;
+                }
+                using (var stream = new MemoryStream())
+                {
+                    workBook.SaveAs(stream);
+                    await stream.FlushAsync();
+                    return new FileContentResult(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                    {
+                        FileDownloadName = $"ShipperProducts_{DateTime.UtcNow.ToShortDateString()}.xlsx"
+                    };
+                }
+            }
+        }
     }
 }

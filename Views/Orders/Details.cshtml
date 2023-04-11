@@ -5,10 +5,10 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Details</h1>
+<h1>Деталі замовлення</h1>
 
 <div>
-    <h4>Order</h4>
+    <h4>Ваше замовлення :3</h4>
     <hr />
     <dl class="row">
         @foreach(var item in Model)
@@ -19,23 +19,16 @@
         <dd class = "col-sm-10">
                 @Html.DisplayFor(model => item.Status)
         </dd>
-        <dt class = "col-sm-2">
-                @Html.DisplayNameFor(model => item.UserId)
-        </dt>
-        <dd class = "col-sm-10">
-                @Html.DisplayFor(model => item.UserId)
+        <dd class = "col-sm-11">
+                <p><small>0-ваше замовлення в обробці</small></p>
+                <p><small>1-ваше замовлення прийнято до обробки</small></p>
+                <p><small>2-ваше замовлення направлено на достаку</small></p>
         </dd>
         <dt class = "col-sm-2">
                 @Html.DisplayNameFor(model => item.DeliveryAddress)
         </dt>
         <dd class = "col-sm-10">
                 @Html.DisplayFor(model => item.DeliveryAddress)
-        </dd>
-        <dt class = "col-sm-2">
-                @Html.DisplayNameFor(model => item.PaymentType)
-        </dt>
-        <dd class = "col-sm-10">
-                @Html.DisplayFor(model => item.PaymentType.Id)
         </dd>
         <dt class = "col-sm-2">
                 @Html.DisplayNameFor(model => item.ShipTypeNavigation)
@@ -47,6 +40,6 @@
     </dl>
 </div>
 <div>
-    <a asp-action="Edit" asp-route-id="@Model?.FirstOrDefault().Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+    <a asp-action="Edit" asp-route-id="@Model?.FirstOrDefault().Id">Змінити</a> |
+    <a asp-action="Index">На головну сторінку</a>
 </div>
