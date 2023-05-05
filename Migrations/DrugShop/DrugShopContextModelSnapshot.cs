@@ -22,6 +22,21 @@ namespace Store444.Migrations.DrugShop
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("OrderProduct", b =>
+                {
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ProductId", "OrderId");
+
+                    b.HasIndex(new[] { "OrderId" }, "IX_OrderProduct_OrdersOrderId");
+
+                    b.ToTable("OrderProduct", (string)null);
+                });
+
             modelBuilder.Entity("Store444.Models.Order", b =>
                 {
                     b.Property<int>("Id")
@@ -30,14 +45,21 @@ namespace Store444.Migrations.DrugShop
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("Count")
+                        .HasColumnType("int");
+
                     b.Property<string>("DeliveryAddress")
+                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
                     b.Property<int?>("PaymentTypeId")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ShipType")
+                    b.Property<double?>("Price")
+                        .HasColumnType("float");
+
+                    b.Property<int?>("ShipTypeId")
                         .HasColumnType("int");
 
                     b.Property<int>("Status")
@@ -50,34 +72,13 @@ namespace Store444.Migrations.DrugShop
 
                     b.HasKey("Id");
 
-                    b.HasIndex(new[] { "ShipType" }, "IX_Orders_DeliveryId");
+                    b.HasIndex(new[] { "ShipTypeId" }, "IX_Orders_DeliveryId");
 
                     b.HasIndex(new[] { "PaymentTypeId" }, "IX_Orders_PaymentTypeId");
 
                     b.HasIndex(new[] { "UserId" }, "IX_Orders_UserId");
 
                     b.ToTable("Orders");
-                });
-
-            modelBuilder.Entity("Store444.Models.OrderProduct", b =>
-                {
-                    b.Property<int>("ProductId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("OrderId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Count")
-                        .HasColumnType("int");
-
-                    b.Property<decimal>("Price")
-                        .HasColumnType("decimal(18, 0)");
-
-                    b.HasKey("ProductId", "OrderId");
-
-                    b.HasIndex(new[] { "OrderId" }, "IX_OrderProduct_OrdersOrderId");
-
-                    b.ToTable("OrderProduct", (string)null);
                 });
 
             modelBuilder.Entity("Store444.Models.PaymentType", b =>
@@ -117,12 +118,18 @@ namespace Store444.Migrations.DrugShop
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<double>("Price")
+                        .HasColumnType("float");
+
                     b.Property<string>("RelaiseFromAndDosing")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ShelfLife")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
@@ -154,6 +161,23 @@ namespace Store444.Migrations.DrugShop
                     b.ToTable("ShipType", (string)null);
                 });
 
+            modelBuilder.Entity("OrderProduct", b =>
+                {
+                    b.HasOne("Store444.Models.Order", null)
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_OrderProduct_Orders_OrdersOrderId");
+
+                    b.HasOne("Store444.Models.Product", null)
+                        .WithMany()
+                        .HasForeignKey("ProductId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("FK_OrderProduct_Products_NameProductId");
+                });
+
             modelBuilder.Entity("Store444.Models.Order", b =>
                 {
                     b.HasOne("Store444.Models.PaymentType", "PaymentType")
@@ -163,7 +187,7 @@ namespace Store444.Migrations.DrugShop
 
                     b.HasOne("Store444.Models.ShipType", "ShipTypeNavigation")
                         .WithMany("Orders")
-                        .HasForeignKey("ShipType")
+                        .HasForeignKey("ShipTypeId")
                         .HasConstraintName("FK_Orders_ShipType");
 
                     b.Navigation("PaymentType");
@@ -171,40 +195,9 @@ namespace Store444.Migrations.DrugShop
                     b.Navigation("ShipTypeNavigation");
                 });
 
-            modelBuilder.Entity("Store444.Models.OrderProduct", b =>
-                {
-                    b.HasOne("Store444.Models.Order", "Order")
-                        .WithMany("OrderProducts")
-                        .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK_OrderProduct_Orders_OrdersOrderId");
-
-                    b.HasOne("Store444.Models.Product", "Product")
-                        .WithMany("OrderProducts")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("FK_OrderProduct_Products_NameProductId");
-
-                    b.Navigation("Order");
-
-                    b.Navigation("Product");
-                });
-
-            modelBuilder.Entity("Store444.Models.Order", b =>
-                {
-                    b.Navigation("OrderProducts");
-                });
-
             modelBuilder.Entity("Store444.Models.PaymentType", b =>
                 {
                     b.Navigation("Orders");
-                });
-
-            modelBuilder.Entity("Store444.Models.Product", b =>
-                {
-                    b.Navigation("OrderProducts");
                 });
 
             modelBuilder.Entity("Store444.Models.ShipType", b =>

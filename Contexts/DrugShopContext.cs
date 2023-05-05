@@ -18,20 +18,20 @@ public partial class DrugShopContext : DbContext
 
     public virtual DbSet<Order> Orders { get; set; }
 
-    public virtual DbSet<OrderProduct> OrderProducts { get; set; }
-
     public virtual DbSet<PaymentType> PaymentTypes { get; set; }
 
     public virtual DbSet<Product> Products { get; set; }
 
     public virtual DbSet<ShipType> ShipTypes { get; set; }
 
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        => optionsBuilder.UseSqlServer("Server= (LocalDB)\\MSSQLLocalDB;Database=DrugShop; Trusted_Connection=True;");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Order>(entity =>
         {
-            entity.HasIndex(e => e.ShipType, "IX_Orders_DeliveryId");
+            entity.HasIndex(e => e.ShipTypeId, "IX_Orders_DeliveryId");
 
             entity.HasIndex(e => e.PaymentTypeId, "IX_Orders_PaymentTypeId");
 
@@ -47,27 +47,8 @@ public partial class DrugShopContext : DbContext
                 .HasConstraintName("FK_Orders_PaymentType");
 
             entity.HasOne(d => d.ShipTypeNavigation).WithMany(p => p.Orders)
-                .HasForeignKey(d => d.ShipType)
+                .HasForeignKey(d => d.ShipTypeId)
                 .HasConstraintName("FK_Orders_ShipType");
-        });
-
-        modelBuilder.Entity<OrderProduct>(entity =>
-        {
-            entity.HasKey(e => new { e.ProductId, e.OrderId });
-
-            entity.ToTable("OrderProduct");
-
-            entity.HasIndex(e => e.OrderId, "IX_OrderProduct_OrdersOrderId");
-
-            entity.Property(e => e.Price).HasColumnType("decimal(18, 0)");
-
-            entity.HasOne(d => d.Order).WithMany(p => p.OrderProducts)
-                .HasForeignKey(d => d.OrderId)
-                .HasConstraintName("FK_OrderProduct_Orders_OrdersOrderId");
-
-            entity.HasOne(d => d.Product).WithMany(p => p.OrderProducts)
-                .HasForeignKey(d => d.ProductId)
-                .HasConstraintName("FK_OrderProduct_Products_NameProductId");
         });
 
         modelBuilder.Entity<PaymentType>(entity =>
@@ -79,6 +60,25 @@ public partial class DrugShopContext : DbContext
             entity.Property(e => e.Name)
                 .HasMaxLength(50)
                 .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasMany(d => d.Orders).WithMany(p => p.Products)
+                .UsingEntity<Dictionary<string, object>>(
+                    "OrderProduct",
+                    r => r.HasOne<Order>().WithMany()
+                        .HasForeignKey("OrderId")
+                        .HasConstraintName("FK_OrderProduct_Orders_OrdersOrderId"),
+                    l => l.HasOne<Product>().WithMany()
+                        .HasForeignKey("ProductId")
+                        .HasConstraintName("FK_OrderProduct_Products_NameProductId"),
+                    j =>
+                    {
+                        j.HasKey("ProductId", "OrderId");
+                        j.ToTable("OrderProduct");
+                        j.HasIndex(new[] { "OrderId" }, "IX_OrderProduct_OrdersOrderId");
+                    });
         });
 
         modelBuilder.Entity<ShipType>(entity =>

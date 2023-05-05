@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Store444.Contexts;
 
@@ -11,9 +12,11 @@ using Store444.Contexts;
 namespace Store444.Migrations
 {
     [DbContext(typeof(DrugShopIdentityContext))]
-    partial class DrugShopIdentityContextModelSnapshot : ModelSnapshot
+    [Migration("20230501190952_scnd")]
+    partial class scnd
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

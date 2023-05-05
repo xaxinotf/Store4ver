@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
 using Microsoft.AspNetCore.Mvc;
@@ -8,36 +9,28 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Store444.Contexts;
 using Store444.Models;
+using Store444.RepoInterfaces;
 
 namespace Store444.Controllers
 {
     public class ProductsController : Controller
     {
-        private readonly DrugShopContext _context;
+        private readonly IProdRepo _prodRepo;
 
-        public ProductsController(DrugShopContext context)
+        public ProductsController(IProdRepo prodRepo)
         {
-            _context = context;
+            _prodRepo = prodRepo;
         }
 
-        // GET: Products
         public async Task<IActionResult> Index()
         {
-            return _context.Products != null ?
-                        View(await _context.Products.ToListAsync()) :
-                        Problem("Entity set 'DrugShopContext.Products'  is null.");
+            var products = await _prodRepo.GetProductsAsync();
+            return View(products);
         }
 
-        // GET: Products/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null || _context.Products == null)
-            {
-                return NotFound();
-            }
-
-            var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var product = await _prodRepo.GetProductWithIdAsync(id);
             if (product == null)
             {
                 return NotFound();
@@ -46,37 +39,28 @@ namespace Store444.Controllers
             return View(product);
         }
 
-        // GET: Products/Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Products/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Name,RelaiseFromAndDosing,ShelfLife")] Product product)
+        public async Task<IActionResult> Create([Bind("Id,Name,RelaiseFromAndDosing,ShelfLife, Price")] Product product)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            product.UserId = userId;
             if (ModelState.IsValid)
             {
-                _context.Add(product);
-                await _context.SaveChangesAsync();
+                await _prodRepo.CreateProductAsync(product);
                 return RedirectToAction(nameof(Index));
             }
             return View(product);
         }
 
-        // GET: Products/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Edit(int id)
         {
-            if (id == null || _context.Products == null)
-            {
-                return NotFound();
-            }
-
-            var product = await _context.Products.FindAsync(id);
+            var product = await _prodRepo.GetProductWithIdAsync(id);
             if (product == null)
             {
                 return NotFound();
@@ -84,51 +68,22 @@ namespace Store444.Controllers
             return View(product);
         }
 
-        // POST: Products/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Name,RelaiseFromAndDosing,ShelfLife")] Product product)
         {
-            if (id != product.Id)
-            {
-                return NotFound();
-            }
-
             if (ModelState.IsValid)
             {
-                try
-                {
-                    _context.Update(product);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ProductExists(product.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                await _prodRepo.EditProductAsync(product);
                 return RedirectToAction(nameof(Index));
             }
             return View(product);
         }
 
-        // GET: Products/Delete/5
-        public async Task<IActionResult> Delete(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null || _context.Products == null)
-            {
-                return NotFound();
-            }
-
-            var product = await _context.Products
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var product = await _prodRepo.GetProductWithIdAsync(id);
             if (product == null)
             {
                 return NotFound();
@@ -137,29 +92,19 @@ namespace Store444.Controllers
             return View(product);
         }
 
-        // POST: Products/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (_context.Products == null)
-            {
-                return Problem("Entity set 'DrugShopContext.Products'  is null.");
-            }
-            var product = await _context.Products.FindAsync(id);
+            var product = await _prodRepo.GetProductWithIdAsync(id);
             if (product != null)
             {
-                _context.Products.Remove(product);
+                await _prodRepo.DeleteProductAsync(product);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool ProductExists(int id)
-        {
-            return (_context.Products?.Any(e => e.Id == id)).GetValueOrDefault();
-        }
         public IActionResult Import()
         {
             return View();
@@ -172,7 +117,7 @@ namespace Store444.Controllers
             {
                 return View();
             }
-            
+
             if (fileExcel != null)
             {
                 using (var stream = new FileStream(fileExcel.FileName, FileMode.Create))
@@ -191,7 +136,7 @@ namespace Store444.Controllers
                                     product.Name = row.Cell(1).Value.ToString();
                                     product.RelaiseFromAndDosing = row.Cell(2).Value.ToString();
                                     product.ShelfLife = row.Cell(3).Value.ToString();
-                                    _context.Products.Add(product);
+                                    await _prodRepo.CreateProductAsync(product);
                                 }
                                 catch (Exception)
                                 {
@@ -201,7 +146,6 @@ namespace Store444.Controllers
                         }
                     }
                 }
-                _context.SaveChanges();
             }
             return RedirectToAction("Index", "Products");
         }
@@ -212,7 +156,7 @@ namespace Store444.Controllers
             int rowCount = 1;
             using (var workBook = new XLWorkbook(XLEventTracking.Disabled))
             {
-                var exexProducts = await _context.Products.ToListAsync();
+                var exexProducts = await _prodRepo.GetProductsAsync();
                 var worksheet = workBook.Worksheets.Add("All products");
                 foreach (var product in exexProducts)
                 {
@@ -231,6 +175,13 @@ namespace Store444.Controllers
                     };
                 }
             }
+        }
+
+        public async Task<IActionResult> ShipperProducts()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var shipperProds = await _prodRepo.GetShipperProductsAsync(userId);
+            return View(shipperProds);
         }
     }
 }

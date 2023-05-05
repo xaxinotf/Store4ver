@@ -1,0 +1,47 @@
+﻿@model IEnumerable<Product>
+<h1>Мої продукти</h1>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model =>model.Name)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Price)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.RelaiseFromAndDosing)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ShelfLife)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Name)
+                </td>
+
+                <td>
+                    @Html.DisplayFor(modelItem => item.Price)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.RelaiseFromAndDosing)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ShelfLife)
+                </td>
+                <td>
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Детально</a> |
+                    <a asp-action="Edit" asp-route-id="@item.Id">Редагувати</a> 
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

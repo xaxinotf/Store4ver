@@ -9,39 +9,30 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using Store444.Contexts;
 using Store444.Models;
+using Store444.RepoInterfaces;
 
 namespace Store444.Controllers
 {
     public class OrdersController : Controller
     {
-        private readonly DrugShopContext _context;
+        private readonly IOrderRepo _orderRepo;
 
-        public OrdersController(DrugShopContext context)
+        public OrdersController(IOrderRepo orderRepo)
         {
-            _context = context;
+            _orderRepo = orderRepo;
         }
 
-        // GET: Orders
         public async Task<IActionResult> Index()
         {
-            var drugShopContext = _context.Orders.Include(o => o.PaymentType).Include(o => o.ShipTypeNavigation);
-            return View(await drugShopContext.ToListAsync());
+            var orders = await _orderRepo.GetOrdersAsync();
+            return View(orders);
         }
 
-        // GET: Orders/Details/5
         public async Task<IActionResult> Details()
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            //if (id == null || _context.Orders == null)
-            //{
-            //    return NotFound();
-            //}
 
-            var order = await _context.Orders
-                .Include(o => o.PaymentType)
-                .Include(o => o.ShipTypeNavigation)
-                .Where(x=>x.UserId == userId)
-                .ToListAsync();
+            var order = await _orderRepo.GetUserOrdersAsync(userId);
             if (order == null)
             {
                 return NotFound();
@@ -49,104 +40,49 @@ namespace Store444.Controllers
 
             return View(order);
         }
-        public async Task<IActionResult> Create()
+
+        public async Task<IActionResult> Create(int[] chosenDrugs)
         {
-            var payments = await _context.PaymentTypes.ToListAsync();
-            var shipTypes = await _context.ShipTypes.ToListAsync();
-            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Name", payments);
-            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Name", shipTypes);
+            var payments = await _orderRepo.GetPaymentsAsync();
+            var shipTypes = await _orderRepo.GetShipTypesAsync();
+            ViewData["PaymentType"] = payments.Select(x => new SelectListItem { Value = x.Id.ToString(), Text = x.Name }).ToList();
+            ViewData["ShipType"] = shipTypes.Select(x => new SelectListItem { Value = x.Id.ToString(), Text = x.Name }).ToList();
+            TempData["ChosenDrugs"] = chosenDrugs;
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order model, int id)
+        public async Task<IActionResult> Create(Order model)
         {
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var product = _context.Products.FirstOrDefault(x => x.Id == id);
+            var chosenDrugs = TempData["ChosenDrugs"] as int[];
+            var products = await _orderRepo.GetProductsWithIdAsync(chosenDrugs);
             model.UserId = userId;
             var order = new Order()
             {
-                ShipType = model.ShipType,
-                PaymentType = model.PaymentType,
+                Status = Status.Packaging,
+                ShipTypeId = model.ShipTypeId,
+                PaymentTypeId = model.PaymentTypeId,
                 DeliveryAddress = model.DeliveryAddress,
-                UserId = userId
+                UserId = userId,
+                Count = products.Count(),
+                Price = products.Select(x=>x.Price).Sum()
             };
 
-            _context.Orders.Add(order);
-            order.OrderProducts.Add(new OrderProduct { Count = 1, Price = 1, Product = product });
-            _context.SaveChanges();
+            await _orderRepo.OrderCreateAsync(order);
+            foreach (var item in products)
+            {
+                order.Products.Add(item);
+            }
+            await _orderRepo.SaveChangesAsync();
             return RedirectToAction(nameof(Details));
 
         }
 
-        // GET: Orders/Edit/5
-        public async Task<IActionResult> Edit(int? id)
+        public async Task<IActionResult> Delete(int id)
         {
-            if (id == null || _context.Orders == null)
-            {
-                return NotFound();
-            }
-
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id", order.PaymentTypeId);
-            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id", order.ShipType);
-            return View(order);
-        }
-
-        // POST: Orders/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Status,ShipType,PaymentTypeId,UserId,DeliveryAddress")] Order order)
-        {
-            if (id != order.Id)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(order);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!OrderExists(order.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["PaymentTypeId"] = new SelectList(_context.PaymentTypes, "Id", "Id", order.PaymentTypeId);
-            ViewData["ShipType"] = new SelectList(_context.ShipTypes, "Id", "Id", order.ShipType);
-            return View(order);
-        }
-
-        // GET: Orders/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null || _context.Orders == null)
-            {
-                return NotFound();
-            }
-
-            var order = await _context.Orders
-                .Include(o => o.PaymentType)
-                .Include(o => o.ShipTypeNavigation)
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var order = await _orderRepo.GetOrderWithIdAsync(id);
             if (order == null)
             {
                 return NotFound();
@@ -155,28 +91,33 @@ namespace Store444.Controllers
             return View(order);
         }
 
-        // POST: Orders/Delete/5
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            if (_context.Orders == null)
-            {
-                return Problem("Entity set 'DrugShopContext.Orders'  is null.");
-            }
-            var order = await _context.Orders.FindAsync(id);
+            var order = await _orderRepo.GetOrderWithIdAsync(id);
             if (order != null)
             {
-                _context.Orders.Remove(order);
+                await _orderRepo.DeleteAsync(order);
             }
 
-            await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
-        private bool OrderExists(int id)
+        public async Task<IActionResult> Edit(int id)
         {
-            return (_context.Orders?.Any(e => e.Id == id)).GetValueOrDefault();
+            var product = await _orderRepo.GetOrderWithIdAsync(id);
+            return View(product);
+        }
+        [HttpPost]
+        public async Task<IActionResult> Edit(Order model)
+        {
+            if (ModelState.IsValid)
+            {
+                await _orderRepo.EditAsync(model);
+                return RedirectToAction("Index");
+            }
+            return View(model);
         }
     }
 }

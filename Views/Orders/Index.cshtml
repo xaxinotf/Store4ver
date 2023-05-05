@@ -1,24 +1,27 @@
-﻿@model IEnumerable<Store444.Models.Order>
+﻿@using Store444.Dopomoga;
+@model IEnumerable<Order>
 
+<div>
+
+    <div id="chart1"></div>
+</div>
+<div>
+    <div id="chart2"></div>
+</div>
 @{
     ViewData["Title"] = "Index";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
 
-<h1>Index</h1>
+
+<h1>Діаграми</h1>
 
 <p>
-    <a asp-action="Create">Create New</a>
+    <a asp-action="Create">Cтворити замовлення</a>
 </p>
 <table class="table">
     <thead>
         <tr>
-            <th>
-                @Html.DisplayNameFor(model => model.Status)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.UserId)
-            </th>
             <th>
                 @Html.DisplayNameFor(model => model.DeliveryAddress)
             </th>
@@ -26,35 +29,86 @@
                 @Html.DisplayNameFor(model => model.PaymentType)
             </th>
             <th>
+                @Html.DisplayNameFor(model => model.Status)
+            </th>
+            <th>
                 @Html.DisplayNameFor(model => model.ShipTypeNavigation)
             </th>
-            <th></th>
+            <th>Дії</th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.Status)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.UserId)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DeliveryAddress)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.PaymentType.Id)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ShipTypeNavigation.Id)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.Id">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.Id">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.Id">Delete</a>
-            </td>
-        </tr>
-}
+        @foreach (var item in Model)
+        {
+            <tr>
+
+                <td>
+                    @Html.DisplayFor(modelItem => item.DeliveryAddress)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.PaymentType.Name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.ShipTypeNavigation.Name)
+                </td>
+                <td>
+                    @EnumHelper.GetStatus(item.Status)
+                </td>
+                <td>
+                    <a asp-action="Delete" asp-route-id="@item.Id">Видалити</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id">Детально</a> |
+                    @if (User.IsInRole(AllRoles.Admin))
+                    {
+                        <a asp-action="Edit" asp-route-id="@item.Id">Змінити</a>
+                    }
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
+
+@section scripts{
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+
+            $.get('/api/Chart/JsonTypeData', function (JsonTypeData) {
+                data = google.visualization.arrayToDataTable(JsonTypeData, false);
+                var option = {
+                    title: "Співвідношення замолень і типу оплати",
+                    width: 500,
+                    height: 300
+                };
+                chart = new google.visualization.PieChart(document.getElementById('chart1'));
+                chart.draw(data, option);
+
+            })
+        }
+    </script>
+
+
+    <script>
+        google.charts.load('current', { 'packages': ['corechart'] });
+        google.charts.setOnLoadCallback(drawChart);
+
+        function drawChart() {
+
+            $.get('/api/Chart/JsonShipData', function (JsonShipData) {
+                data = google.visualization.arrayToDataTable(JsonShipData, false);
+                var option = {
+                    title: "кількість замовлень та тип доставки",
+                    width: 500,
+                    height: 300
+                };
+                chart = new google.visualization.PieChart(document.getElementById('chart2'));
+                chart.draw(data, option);
+
+            })
+        }
+    </script>
+}
+
+

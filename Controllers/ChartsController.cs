@@ -2,34 +2,46 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Store444.Contexts;
-using Store444.Dopomoga;
 
-
-namespace Store444.Controllers
+namespace OOPLab1.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     [ApiController]
-    public class ChartsController : ControllerBase
+    public class ChartController : ControllerBase
     {
-        private readonly DrugShopContext _context;
 
-        public ChartsController(DrugShopContext context)
+        private DrugShopContext _context;
+        public ChartController(DrugShopContext context)
         {
             _context = context;
         }
-        [HttpGet("JsonData")]
-        public JsonResult JsonData()
+
+        [HttpGet]
+        public JsonResult JsonShipData()
         {
-            var products = _context.Products.ToList();
-            var lst = new List<object>
+            var types = _context.ShipTypes.Include(p => p.Orders).ToList();
+            List<object> data = new List<object>();
+            data.Add(new[] { "Тип доставки", "Кількість замовлень" });
+            foreach (var p in types)
             {
-                new[] { "Products", "Product count" }
-            };
-            foreach (var c in products)
-            {
-                lst.Add(new object[] { c.RelaiseFromAndDosing, products.Count() });
+                data.Add(new object[] { p.Name, p.Orders.Count });
             }
-            return new JsonResult(lst);
+
+            return new JsonResult(data);
+        }
+
+        [HttpGet]
+        public JsonResult JsonTypeData()
+       {
+            var pharmasies = _context.PaymentTypes.Include(p => p.Orders).ToList();
+            List<object> data = new List<object>();
+            data.Add(new[] { "Тип оплати", "Кількість замовлень" });
+            foreach (var p in pharmasies)
+            {
+                data.Add(new object[] { p.Name, p.Orders.Count });
+            }
+
+            return new JsonResult(data);
         }
     }
 }

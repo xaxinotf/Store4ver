@@ -5,7 +5,7 @@
 namespace Store444.Migrations.DrugShop
 {
     /// <inheritdoc />
-    public partial class jgsdf : Migration
+    public partial class fr : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -32,7 +32,9 @@ namespace Store444.Migrations.DrugShop
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     RelaiseFromAndDosing = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ShelfLife = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    ShelfLife = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Price = table.Column<double>(type: "float", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -60,10 +62,12 @@ namespace Store444.Migrations.DrugShop
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     Status = table.Column<int>(type: "int", nullable: false),
-                    ShipType = table.Column<int>(type: "int", nullable: true),
+                    ShipTypeId = table.Column<int>(type: "int", nullable: true),
                     PaymentTypeId = table.Column<int>(type: "int", nullable: true),
                     UserId = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
-                    DeliveryAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true)
+                    DeliveryAddress = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    Count = table.Column<int>(type: "int", nullable: true),
+                    Price = table.Column<double>(type: "float", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -75,7 +79,7 @@ namespace Store444.Migrations.DrugShop
                         principalColumn: "id");
                     table.ForeignKey(
                         name: "FK_Orders_ShipType",
-                        column: x => x.ShipType,
+                        column: x => x.ShipTypeId,
                         principalTable: "ShipType",
                         principalColumn: "id");
                 });
@@ -85,9 +89,7 @@ namespace Store444.Migrations.DrugShop
                 columns: table => new
                 {
                     ProductId = table.Column<int>(type: "int", nullable: false),
-                    OrderId = table.Column<int>(type: "int", nullable: false),
-                    Count = table.Column<int>(type: "int", nullable: false),
-                    Price = table.Column<decimal>(type: "decimal(18,0)", nullable: false)
+                    OrderId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -114,7 +116,7 @@ namespace Store444.Migrations.DrugShop
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_DeliveryId",
                 table: "Orders",
-                column: "ShipType");
+                column: "ShipTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Orders_PaymentTypeId",
